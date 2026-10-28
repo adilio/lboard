@@ -1,8 +1,8 @@
 # Layla Board
 
-A quiet, local-first playroom for curious little hands. Twenty open-ended toys across ten areas, with original SVG illustrations, gentle synthesized sound, touch and keyboard controls, and an installable offline shell.
+A bright, tactile, local-first playroom for curious little hands. Twenty open-ended toys across ten areas, with chunky 3D toy styling, springy touch-caused animation, original SVG illustrations, synthesized pentatonic sound, touch and keyboard controls, and an installable offline shell.
 
-Built from [the supplied research and specification](docs/LAYLA_BOARD_RESEARCH_AND_SPEC.md). No backend, account, external assets, telemetry, or API keys.
+Built from [the original research and specification](docs/LAYLA_BOARD_RESEARCH_AND_SPEC.md) and [the v1.0 research and product specification](docs/LAYLA_BOARD_SPEC_V1_RESEARCH.md). See [the design refresh notes](docs/DESIGN_REFRESH.md) for how the visual and motion system applies that research. No backend, account, external assets, telemetry, or API keys.
 
 ## Develop
 
@@ -32,7 +32,7 @@ For a GitHub Pages project site, explicitly use `APP_BASE=/lboard/ npm run build
 
 ## Play
 
-Choose a world, then a toy. Every toy is available immediately. Home returns to its shelf in one tap. Switches, scenes, and art stay in memory while navigating; reload starts a fresh session. Only validated preferences are stored on the device.
+Choose a place on the playground map, then a toy. Every touch answers with a small burst of confetti; places and cards lean towards the finger and zoom you in. Every toy is available immediately. Home returns to its shelf in one tap. Switches, scenes, and art stay in memory while navigating; reload starts a fresh session. Only validated preferences are stored on the device.
 
 Select a piece and then a destination to place it, or drag it into the destination. Track Maker uses a six-cell board; select a cell using the **Cell** button and rotate its track using **Rotate**. The ball starts at the left edge of cell 1 and follows connected endpoints. Finger Paint supports freehand drawing, colour and brush selection, undo, a confirmed clear, and a keyboard-accessible stamp grid.
 
@@ -50,8 +50,9 @@ Install on an iPad using Safari's Share → Add to Home Screen. Open the install
 
 This is an initial playable implementation, not a device-certified release. [Validation notes and remaining checks](docs/VALIDATION.md) distinguish automated evidence from the specification's real-iPad release gate.
 
-- Art and icons are original local SVG/PNG under this repository's MIT license. Sound is synthesized locally with Web Audio; this implementation uses gentle tones rather than recorded piano, animal, or voice samples. There is no narration.
-- System fonts keep the app small and avoid remote font requests; a custom bundled rounded font has not been added.
+- Art and icons are original local SVG/PNG under this repository's MIT license. Sound is synthesized locally with Web Audio (mallet, drum, shaker, pop, sparkle and whoosh voices through a limiter) rather than recorded samples. There is no narration.
+- The system rounded font (`ui-rounded`) keeps the app small and avoids remote font requests.
+- Motion is caused by touch, except one slow drifting cloud. The system reduced-motion setting or the parent toggle replaces zooms and confetti with short fades.
 - The 20 initial toys are present; later R2/R3 catalogue activities are not included. Garden growth is explicit tap-to-plant / tap-to-water, and clouds use a tap-to-move control. Some scene pieces use geometric symbols rather than detailed illustrated objects.
 - Painting is bounded to 200 strokes, 1,500 points per stroke, and DPR 2. Stamps provide a limited assistive alternative, not equivalent freehand expression. Free scenes allow up to 36 pieces, picnic plates 12 ingredients, counting plates five berries each, and instruments eight voices globally including optional music.
 - Touch target and visual accessibility refinements require real-device testing. No WCAG conformance, developmental outcome, or kiosk guarantee is claimed.

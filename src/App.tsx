@@ -1,10 +1,20 @@
 import { useEffect, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
-import { areas, defaults, validatePreferences } from "./model";
+import type { MouseEvent as RM } from "react";
+import { areas, defaults, toyArt, validatePreferences } from "./model";
 import type { Preferences } from "./model";
 import { Art, Icon } from "./Art";
 import { Toy, freshState } from "./Toys";
-import { stopAudio, startMusic, stopMusic, musicLevel } from "./audio";
+import {
+  stopAudio,
+  startMusic,
+  stopMusic,
+  musicLevel,
+  tone,
+  sfx,
+  pentatonic,
+} from "./audio";
+import { startTouchFX } from "./fx";
 const key = "lboard.preferences.v1";
 const questions = [
   { q: "What is 7 + 5?", answers: [10, 12, 14], correct: 12 },
@@ -28,10 +38,7 @@ export default function App() {
   const [initial] = useState(load);
   const [prefs, setPrefs] = useState(initial.prefs);
   const [blocked, setBlocked] = useState(initial.blocked);
-  const [page, setPage] = useState(0);
-  const [compact, setCompact] = useState(
-    () => window.matchMedia("(max-width: 700px)").matches,
-  );
+  const [nav, setNav] = useState({ x: 0, y: 0, dir: "load" });
   const [areaId, setArea] = useState<string | null>(null);
   const [toy, setToy] = useState<string | null>(null);
   const [resetVersion, setResetVersion] = useState(0);
@@ -73,27 +80,28 @@ export default function App() {
   const title = useRef<HTMLHeadingElement>(null);
   const parentButton = useRef<HTMLButtonElement>(null);
   const area = areas.find((a) => a.id === areaId);
-  const perPage = compact ? 3 : 5;
   const visibleAreas = areas.filter((a) =>
     prefs.calmMode
       ? a.id === "calm"
       : a.toys.some((t) => prefs.enabledActivityIds.includes(t)),
   );
-  const maxPage = Math.max(0, Math.ceil(visibleAreas.length / perPage) - 1);
-  const actualPage = Math.min(page, maxPage);
-  const currentAreas = visibleAreas.slice(
-    actualPage * perPage,
-    (actualPage + 1) * perPage,
-  );
-  useEffect(() => {
-    const mq = window.matchMedia("(max-width: 700px)");
-    const change = () => {
-      setCompact(mq.matches);
-      setPage(0);
-    };
-    mq.addEventListener("change", change);
-    return () => mq.removeEventListener("change", change);
-  }, []);
+  const mainRef = useRef<HTMLElement>(null);
+  const fxCanvas = useRef<HTMLCanvasElement>(null);
+  useEffect(() => startTouchFX(fxCanvas.current!), []);
+  // Zoom into (or back out of) the place that was tapped.
+  function go(e: RM<HTMLElement> | null, dir: "in" | "out", next: () => void) {
+    const main = mainRef.current?.getBoundingClientRect();
+    const r = e?.currentTarget.getBoundingClientRect();
+    setNav({
+      x: r && main ? r.left + r.width / 2 - main.left : 0,
+      y: r && main ? r.top + r.height / 2 - main.top : 0,
+      dir,
+    });
+    stopAudio();
+    sfx(prefs, "whoosh", dir === "in" ? 1 : 0.7);
+    next();
+    window.scrollTo({ top: 0 });
+  }
   useEffect(() => {
     try {
       localStorage.setItem(key, JSON.stringify(prefs));
@@ -103,9 +111,8 @@ export default function App() {
     }
   }, [prefs]);
   useEffect(() => {
-    title.current?.focus();
-    stopAudio();
-  }, [areaId, toy, page]);
+    title.current?.focus({ preventScroll: true });
+  }, [areaId, toy]);
   useEffect(() => {
     document.documentElement.dataset.reduced = String(prefs.reducedMotion);
     if (!prefs.soundEnabled) stopAudio();
@@ -254,18 +261,42 @@ export default function App() {
         inert={parent !== "closed"}
         onKeyDown={arrowFocus}
       >
+        <div className="sky" aria-hidden="true">
+          <div className="sky-sun" />
+          <div className="sky-cloud" />
+          <svg
+            className="sky-hills"
+            viewBox="0 0 1440 260"
+            preserveAspectRatio="none"
+          >
+            <path
+              d="M0 150Q240 40 520 130T1040 110 1440 90V260H0z"
+              fill="#9fdc8f"
+            />
+            <path
+              d="M0 200Q300 110 640 190T1180 170 1440 180V260H0z"
+              fill="#6cc07a"
+            />
+          </svg>
+        </div>
         <header className="topbar">
           <button
             className="brand"
             aria-label="Layla Board playroom"
-            onClick={() => {
-              setToy(null);
-              setArea(null);
-              setPage(0);
-            }}
+            onClick={(e) =>
+              go(e, "out", () => {
+                setToy(null);
+                setArea(null);
+              })
+            }
           >
-            <span className="brand-flower">✿</span>
-            <span>
+            <span className="brand-mark" aria-hidden="true">
+              <i />
+              <i />
+              <i />
+              <i />
+            </span>
+            <span className="brand-word">
               layla<span className="brand-board">board</span>
             </span>
           </button>
@@ -278,7 +309,6 @@ export default function App() {
             >
               <Icon name={prefs.soundEnabled ? "sound" : "mute"} />
             </button>
-            <span className="top-divider" />
             <button
               ref={parentButton}
               className="parent-link"
@@ -289,225 +319,164 @@ export default function App() {
             </button>
           </div>
         </header>
-        <main>
-          {toy && area ? (
-            <>
-              <div className="activity-header">
-                <button
-                  className="round-nav"
-                  aria-label={`Back to ${area.name}`}
-                  onClick={() => setToy(null)}
-                >
-                  <Icon name="home" />
-                </button>
-                <div>
-                  <span className="eyebrow">{area.name}</span>
-                  <h1 ref={title} tabIndex={-1}>
-                    {toy}
-                  </h1>
-                </div>
-                <button
-                  className="round-nav reset-button"
-                  aria-label={`Reset ${toy}`}
-                  onClick={() => {
-                    if (
-                      toy === "Finger Paint" &&
-                      !window.confirm("Start a fresh piece of paper?")
-                    )
-                      return;
-                    stopAudio();
-                    setStates((p) => ({ ...p, [toy]: freshState() }));
-                    setResetVersion((v) => v + 1);
-                  }}
-                >
-                  <Icon name="reset" />
-                </button>
-              </div>
-              <section
-                className="activity-stage"
+        <main ref={mainRef}>
+          <div
+            key={`${areaId}|${toy}`}
+            className={`view view-${nav.dir}`}
+            style={
+              {
+                "--ox": `${nav.x}px`,
+                "--oy": `${nav.y}px`,
+              } as React.CSSProperties
+            }
+          >
+            {toy && area ? (
+              <div
+                className="activity-view"
                 style={{ "--area": area.color } as React.CSSProperties}
               >
-                <Toy
-                  key={`${toy}:${resetVersion}`}
-                  name={toy}
-                  prefs={prefs}
-                  state={states[toy] || freshState()}
-                  onChange={(state) =>
-                    setStates((p) => ({ ...p, [toy]: state }))
-                  }
-                />
-              </section>
-              <div className="activity-footer">
-                <span>Follow your curiosity.</span>
-                <span className="tiny-flower">✿</span>
-                <span>There’s no right way to play.</span>
-              </div>
-            </>
-          ) : area ? (
-            <>
-              <div className="shelf-heading">
-                <button
-                  className="round-nav"
-                  aria-label="Back to playroom"
-                  onClick={() => setArea(null)}
-                >
-                  <Icon name="back" />
-                </button>
-                <div>
-                  <span className="eyebrow">A little space to explore</span>
-                  <h1 ref={title} tabIndex={-1}>
-                    {area.name}
-                  </h1>
-                  <p>{area.tag}</p>
-                </div>
-                <span className="heading-doodle">✧</span>
-              </div>
-              <section
-                className="toy-shelf"
-                aria-label={`${area.name} activities`}
-              >
-                {area.toys
-                  .filter(
-                    (t) =>
-                      prefs.calmMode || prefs.enabledActivityIds.includes(t),
-                  )
-                  .map((t, i) => (
-                    <button
-                      key={t}
-                      className="activity-card"
-                      style={{ "--area": area.color } as React.CSSProperties}
-                      onClick={() => setToy(t)}
-                    >
-                      <div className={`activity-art activity-art-${i}`}>
-                        <Art
-                          kind={
-                            i === 0
-                              ? area.art
-                              : (
-                                  {
-                                    busy: "rabbit",
-                                    music: "bubbles",
-                                    animals: "flower",
-                                    creative: "shapes",
-                                    science: "flask",
-                                    building: "blocks",
-                                    pretend: "flower",
-                                    learning: "shapes",
-                                    calm: "rabbit",
-                                    surprise: "switch",
-                                  } as Record<string, string>
-                                )[area.id]
-                          }
-                        />
-                      </div>
-                      <span className="activity-card-text">
-                        <strong>{t}</strong>
-                        <span>{activityDescriptions[t]}</span>
-                      </span>
-                      <span className="card-arrow">
-                        <Icon name="next" />
-                      </span>
-                    </button>
-                  ))}
-              </section>
-              <p className="shelf-note">A little tap is all it takes.</p>
-            </>
-          ) : (
-            <>
-              <div className="welcome">
-                <span className="eyebrow">
-                  <i /> A LITTLE ROOM FOR BIG IMAGINATIONS
-                </span>
-                <h1 ref={title} tabIndex={-1}>
-                  Hello, little{" "}
-                  <span>
-                    explorer.
-                    <svg viewBox="0 0 290 15" aria-hidden="true">
-                      <path
-                        d="M4 9Q130-1 285 6"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="6"
-                        strokeLinecap="round"
-                      />
-                    </svg>
-                  </span>
-                </h1>
-                <p>Pick a little world. See where it takes you.</p>
-                <span className="welcome-star star-one">✧</span>
-                <span className="welcome-star star-two">✳</span>
-              </div>
-              <section className="area-shelf" aria-label="Play areas">
-                {currentAreas.map((a, i) => (
+                <div className="activity-header">
                   <button
-                    key={a.id}
-                    className={`area-card area-${a.id}`}
-                    style={
-                      {
-                        "--area": a.color,
-                        "--tilt": `${[-2, 1, -1, 2, -1][i]}deg`,
-                      } as React.CSSProperties
-                    }
-                    onClick={() => setArea(a.id)}
+                    className="round-nav home-button"
+                    aria-label={`Back to ${area.name}`}
+                    onClick={(e) => go(e, "out", () => setToy(null))}
                   >
-                    <div className="card-illustration">
-                      <div className="paper-blob" />
-                      <Art kind={a.art} />
-                      <span className="art-spark">{i % 2 ? "·" : "✧"}</span>
-                    </div>
-                    <div className="area-card-label">
-                      <h2>{a.name}</h2>
-                      <p>{a.tag}</p>
-                      <span className="explore-arrow">
-                        <Icon name="next" />
-                      </span>
-                    </div>
+                    <Icon name="home" />
                   </button>
-                ))}
-              </section>
-              <nav className="pagination" aria-label="Playroom pages">
-                <button
-                  className="round-nav"
-                  aria-label="Previous play areas"
-                  disabled={actualPage === 0}
-                  onClick={() => setPage(actualPage - 1)}
+                  <div className="activity-title">
+                    <span className="eyebrow">{area.name}</span>
+                    <h1 ref={title} tabIndex={-1}>
+                      {toy}
+                    </h1>
+                  </div>
+                  <button
+                    className="round-nav reset-button"
+                    aria-label={`Reset ${toy}`}
+                    onClick={() => {
+                      if (
+                        toy === "Finger Paint" &&
+                        !window.confirm("Start a fresh piece of paper?")
+                      )
+                        return;
+                      stopAudio();
+                      sfx(prefs, "sparkle", 0.8);
+                      setStates((p) => ({ ...p, [toy]: freshState() }));
+                      setResetVersion((v) => v + 1);
+                    }}
+                  >
+                    <Icon name="reset" />
+                  </button>
+                </div>
+                <section className="activity-stage">
+                  <Toy
+                    key={`${toy}:${resetVersion}`}
+                    name={toy}
+                    prefs={prefs}
+                    state={states[toy] || freshState()}
+                    onChange={(state) =>
+                      setStates((p) => ({ ...p, [toy]: state }))
+                    }
+                  />
+                </section>
+              </div>
+            ) : area ? (
+              <div
+                className="room-view"
+                style={{ "--area": area.color } as React.CSSProperties}
+              >
+                <div className="shelf-heading">
+                  <button
+                    className="round-nav home-button"
+                    aria-label="Back to playroom"
+                    onClick={(e) => go(e, "out", () => setArea(null))}
+                  >
+                    <Icon name="home" />
+                  </button>
+                  <div>
+                    <h1 ref={title} tabIndex={-1}>
+                      {area.name}
+                    </h1>
+                    <p>{area.tag}</p>
+                  </div>
+                </div>
+                <section
+                  className="toy-shelf"
+                  aria-label={`${area.name} activities`}
                 >
-                  <Icon name="back" />
-                </button>
-                <div className="page-markers">
-                  {Array.from({ length: maxPage + 1 }, (_, i) => (
+                  {area.toys
+                    .filter(
+                      (t) =>
+                        prefs.calmMode || prefs.enabledActivityIds.includes(t),
+                    )
+                    .map((t, i) => (
+                      <button
+                        key={t}
+                        className="activity-card tilt"
+                        style={{ "--i": i } as React.CSSProperties}
+                        onClick={(e) => {
+                          go(e, "in", () => setToy(t));
+                          tone(prefs, pentatonic[5 + i * 2]);
+                        }}
+                      >
+                        <span className="card-face">
+                          <span className="activity-art">
+                            <span className="art-glow" />
+                            <Art kind={toyArt[t]} />
+                          </span>
+                          <span className="activity-card-text">
+                            <strong>{t}</strong>
+                            <span>{activityDescriptions[t]}</span>
+                          </span>
+                          <span className="card-shine" />
+                        </span>
+                      </button>
+                    ))}
+                </section>
+              </div>
+            ) : (
+              <div className="map-view">
+                <div className="welcome">
+                  <h1 ref={title} tabIndex={-1}>
+                    Hello, little <span>explorer.</span>
+                  </h1>
+                  <p>Pick a little world. See where it takes you.</p>
+                </div>
+                <section className="area-shelf" aria-label="Play areas">
+                  {visibleAreas.map((a, i) => (
                     <button
-                      key={i}
-                      aria-label={`Play areas page ${i + 1}`}
-                      aria-current={actualPage === i ? "page" : undefined}
-                      onClick={() => setPage(i)}
+                      key={a.id}
+                      className={`area-card tilt area-${a.id}`}
+                      style={
+                        {
+                          "--area": a.color,
+                          "--i": i,
+                        } as React.CSSProperties
+                      }
+                      onClick={(e) => {
+                        go(e, "in", () => setArea(a.id));
+                        tone(prefs, pentatonic[i % pentatonic.length]);
+                      }}
                     >
-                      <span />
+                      <span className="card-face">
+                        <span className="card-illustration">
+                          <span className="art-glow" />
+                          <Art kind={a.art} />
+                        </span>
+                        <span className="area-card-label">
+                          <h2>{a.name}</h2>
+                          <p>{a.tag}</p>
+                        </span>
+                        <span className="card-shine" />
+                      </span>
                     </button>
                   ))}
-                </div>
-                <button
-                  className="round-nav"
-                  aria-label="Next play areas"
-                  disabled={actualPage === maxPage}
-                  onClick={() => setPage(actualPage + 1)}
-                >
-                  <Icon name="next" />
-                </button>
-              </nav>
-              <div className="home-footer">
-                <span className="footer-sprig">❧</span>
-                <p>No hurry. No rules. Just a little wonder.</p>
-                <span className="footer-dots">· · ·</span>
+                </section>
               </div>
-            </>
-          )}
+            )}
+          </div>
         </main>
-        <footer className="bottom-bar">
-          <span>MADE FOR CURIOUS LITTLE HANDS</span>
-          <span>play. discover. imagine.</span>
-        </footer>
       </div>
+      <canvas ref={fxCanvas} className="touch-fx" aria-hidden="true" />
       {parent !== "closed" && (
         <div className="modal-backdrop">
           <div
@@ -659,7 +628,6 @@ export default function App() {
                         change("calmMode", e.target.checked);
                         setArea(null);
                         setToy(null);
-                        setPage(0);
                       }}
                     />
                   </Setting>
