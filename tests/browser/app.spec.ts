@@ -258,7 +258,9 @@ test("counting, gears, kitchen, clinic and stars", async ({ page }) => {
   await expect(status).toHaveText(new RegExp(`^${n} .*!$`));
   await openToy(page, "Workshop Wall", "Gear Wall");
   for (let i = 1; i <= 5; i++) {
-    await page.getByRole("button", { name: "Middle gear" }).click();
+    await page
+      .getByRole("button", { name: "Middle gear", exact: true })
+      .click();
     await page.getByRole("button", { name: `Peg ${i}, empty` }).click();
   }
   await expect(status).toHaveText("The gears reach the toy. Turn the crank!");
@@ -294,13 +296,13 @@ test("tap-tap and drag both place shapes; a cancelled drag leaves no shape", asy
   await page.goto("./");
   await openToy(page, "Build Yard", "Shape Pictures");
   await page.getByRole("button", { name: "Blank page" }).click();
-  await page.getByRole("button", { name: "circle shape" }).click();
+  await page.getByRole("button", { name: "circle shape", exact: true }).click();
   await page.getByRole("button", { name: "Put it here" }).click();
   await expect(
     page.getByRole("button", { name: "circle 1: change colour" }),
   ).toBeVisible();
   const piece = page.getByRole("button", { name: "star shape" });
-  const canvas = page.getByRole("button", { name: "Picture" });
+  const canvas = page.getByRole("button", { name: "Picture", exact: true });
   const a = (await piece.boundingBox())!,
     b = (await canvas.boundingBox())!;
   await page.mouse.move(a.x + a.width / 2, a.y + a.height / 2);

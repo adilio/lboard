@@ -79,7 +79,7 @@ export default function BubblePopField({ prefs }: { prefs: Preferences }) {
         b.x = Math.min(92, b.x + b.drift * dt);
         const el = els.current.get(b.id);
         if (el)
-          el.style.transform = `translate(-50%, -50%) translate(${Math.sin(t / 1100 + b.phase) * 10}px, 0)`;
+          el.style.transform = `translateX(${Math.sin(t / 1100 + b.phase) * 10}px)`;
         if (el) {
           el.style.left = `${b.x}%`;
           el.style.top = `${b.y}%`;

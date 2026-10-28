@@ -2223,7 +2223,7 @@
   background: none;
   border-radius: 26px;
 }
-.placed-hit {
+.act .placed-hit {
   position: absolute;
   translate: -50% -50%;
   background: none;
@@ -2410,8 +2410,8 @@
   animation: spin-once 0.35s linear 4;
 }
 .k-item {
-  width: 64px;
-  height: 64px;
+  width: 84px;
+  height: 84px;
   background: none;
   padding: 0;
 }
@@ -3404,6 +3404,8 @@
     inset -10px -12px 22px #3ba7e033;
   touch-action: none;
   z-index: 4;
+  /* Moved every frame by script; a CSS transition here would never end. */
+  transition: none;
 }
 .float-bubble::before {
   content: "";
@@ -3600,7 +3602,12 @@
   top: 34%;
   height: 16px;
   border-radius: 8px;
-  background: linear-gradient(90deg, #6b7386 0 22px, #0000 22px calc(100% - 22px), #6b7386 0);
+  background: linear-gradient(
+    90deg,
+    #6b7386 0 22px,
+    #0000 22px calc(100% - 22px),
+    #6b7386 0
+  );
   pointer-events: none;
 }
 .st-oven::after {
@@ -3616,7 +3623,12 @@
   pointer-events: none;
 }
 .st-oven.busy::after {
-  background: radial-gradient(ellipse at 50% 100%, #ff9f3a, #e8604f 60%, #2e2a3b);
+  background: radial-gradient(
+    ellipse at 50% 100%,
+    #ff9f3a,
+    #e8604f 60%,
+    #2e2a3b
+  );
 }
 .st-oven .station-items {
   z-index: 1;
