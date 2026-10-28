@@ -114,6 +114,11 @@ p {
 button svg {
   flex-shrink: 0;
 }
+/* The host's injected badge iframe cannot run under this app's CSP and shows
+   as an empty box over play; keep the child area free of outside links. */
+#nl-badge-frame {
+  display: none !important;
+}
 .touch-fx {
   position: fixed;
   inset: 0;
