@@ -47,16 +47,14 @@
   --area-deep: color-mix(in srgb, var(--area) 66%, #2e2a3b);
   --area-soft: color-mix(in srgb, var(--area) 28%, #fff);
 }
+html {
+  /* A plain colour behind everything: iPadOS ignores fixed backgrounds and
+     would otherwise repeat a gradient as a band below the page. */
+  background: var(--sky-bottom);
+}
 body {
   margin: 0;
   min-height: 100dvh;
-  background: linear-gradient(
-    180deg,
-    var(--sky-top) 0%,
-    var(--sky-bottom) 62%,
-    #eaf8ff 100%
-  );
-  background-attachment: fixed;
   overscroll-behavior: none;
   -webkit-user-select: none;
   user-select: none;
@@ -116,11 +114,16 @@ p {
 button svg {
   flex-shrink: 0;
 }
+/* The host's injected badge iframe cannot run under this app's CSP and shows
+   as an empty box over play; keep the child area free of outside links. */
+#nl-badge-frame {
+  display: none !important;
+}
 .touch-fx {
   position: fixed;
   inset: 0;
-  width: 100vw;
-  height: 100vh;
+  width: 100%;
+  height: 100%;
   pointer-events: none;
   z-index: 40;
 }
@@ -130,6 +133,12 @@ button svg {
   position: fixed;
   inset: 0;
   z-index: -1;
+  background: linear-gradient(
+    180deg,
+    var(--sky-top) 0%,
+    var(--sky-bottom) 62%,
+    #eaf8ff 100%
+  );
   overflow: hidden;
   pointer-events: none;
 }
