@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import { defineConfig } from "@playwright/test";
-const port = process.env.PW_PORT || "4173";
-const url = `http://127.0.0.1:${port}${process.env.APP_BASE || "/lboard/"}`;
+const port = process.env.PW_PORT || "4180";
+const url = `http://127.0.0.1:${port}${process.env.APP_BASE || "/"}`;
 export default defineConfig({
   testDir: "./tests/browser",
   fullyParallel: false,
@@ -16,8 +16,8 @@ export default defineConfig({
     },
   },
   webServer: {
-    command: `npm run preview -- --port ${port}`,
+    command: "node tests/serve-static.mjs",
     url,
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: false,
   },
 });

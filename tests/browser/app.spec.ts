@@ -345,3 +345,39 @@ test("prepared update waits during play and activates only on parent request", a
     await unlink(updateFile);
   }
 });
+
+test("published HTML points to real JavaScript, CSS, icons, and a correctly scoped manifest", async ({
+  page,
+}) => {
+  const response = await page.goto("./");
+  expect(response?.status()).toBe(200);
+  await expect(
+    page.getByRole("heading", { name: "Hello, little explorer." }),
+  ).toBeVisible();
+  const assets = await page
+    .locator(
+      'script[src],link[rel="stylesheet"],link[rel="icon"],link[rel="apple-touch-icon"],link[rel="manifest"]',
+    )
+    .evaluateAll((elements) =>
+      elements.map((el) => ({
+        url: el.getAttribute("src") || el.getAttribute("href") || "",
+        tag: el.tagName,
+        rel: el.getAttribute("rel"),
+      })),
+    );
+  for (const asset of assets) {
+    const res = await page.request.get(asset.url);
+    expect(res.status(), asset.url).toBe(200);
+    if (asset.tag === "SCRIPT")
+      expect(res.headers()["content-type"]).toContain("javascript");
+    if (asset.rel === "stylesheet")
+      expect(res.headers()["content-type"]).toContain("text/css");
+  }
+  const manifest = await (
+    await page.request.get("manifest.webmanifest")
+  ).json();
+  expect(manifest.start_url).toBe(process.env.APP_BASE || "/");
+  expect(manifest.scope).toBe(process.env.APP_BASE || "/");
+  const missing = await page.request.get("assets/missing-script.js");
+  expect(missing.status()).toBe(404);
+});

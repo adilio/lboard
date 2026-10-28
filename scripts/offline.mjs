@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { Buffer } from "node:buffer";
 import { deflateSync } from "node:zlib";
 import path from "node:path";
-const base = process.env.APP_BASE || "/lboard/";
+const base = process.env.APP_BASE || "/";
 const output = process.env.APP_OUT_DIR || "dist";
 if (!base.startsWith("/") || !base.endsWith("/"))
   throw new Error("APP_BASE must start and end with /.");

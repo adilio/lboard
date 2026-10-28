@@ -12,6 +12,6 @@ export default defineConfig(({ command }) => ({
       },
     },
   ],
-  base: process.env.APP_BASE || "/lboard/",
+  base: process.env.APP_BASE || "/",
   build: { outDir: process.env.APP_OUT_DIR || "dist" },
 }));

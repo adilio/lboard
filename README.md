@@ -13,7 +13,7 @@ npm ci
 npm run dev
 ```
 
-Vite's default base is `/lboard/` for GitHub Pages. The development server prints the local address; use the `/lboard/` path. Service workers are registered only in production builds.
+The default base is `/`, suitable for Netlify and other root-hosted sites. The development server prints the local address. Service workers are registered only in production builds.
 
 ```sh
 npm run typecheck
@@ -26,7 +26,9 @@ npm run test:browser
 
 Browser tests use `/usr/bin/chromium` if installed. Otherwise run `npx playwright install chromium`; optionally set `CHROMIUM_PATH` to an existing browser. In a minimal Linux CI image, use `npx playwright install --with-deps chromium`.
 
-For a root-hosted site, use `APP_BASE=/ npm run build` and `APP_BASE=/ npm run preview`. Deploy the complete `dist/` directory over HTTPS. No deployment has been performed by this project setup. GitHub Actions runs checks, not publication.
+Netlify reads `netlify.toml`: build with `npm run build`, publish `dist`, and use Node 24. The default build works at the site root without extra variables. Remove a previously configured `APP_BASE=/lboard/` override from Netlify's environment variables if one exists. Deploy the complete `dist/` directory over HTTPS.
+
+For a GitHub Pages project site, explicitly use `APP_BASE=/lboard/ npm run build` and `APP_BASE=/lboard/ npm run preview`. The same base is applied to JavaScript, CSS, app icons, the manifest, and the offline worker. Browser tests use a plain static server, without Vite's base-path handling or HTML fallback. Run `APP_BASE=/lboard/ npm run test:browser` after that subpath build. GitHub Actions runs checks, not publication.
 
 ## Play
 
