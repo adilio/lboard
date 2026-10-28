@@ -8,7 +8,7 @@ Validated with Node 24.19.0, npm 11.9.0, and local Chromium:
 
 - Clean `npm ci`, strict type check, ESLint, and production build passed.
 - 10 Vitest tests passed.
-- 12 production browser tests passed against a plain static server, including all 20 toy entries, offline reload, cache detection/repair, and deliberate waiting-worker activation.
+- 12 production browser tests passed (re-run after the Sunny Workshop design refresh; tests now wait for zoom and pop-in animations to settle) against a plain static server, including all 20 toy entries, offline reload, cache detection/repair, and deliberate waiting-worker activation.
 - The complete browser suite passes for both `/` (Netlify default) and explicit `/lboard/` builds. CI covers both bases. Published-asset checks reject missing JavaScript, incorrect MIME types, and HTML fallback for nonexistent assets.
 - Desktop and phone screenshots were inspected. The development server's HTML, source loading, navigation, and switch interaction were also verified.
 - Initial JavaScript is approximately 86 KB gzipped; the complete generated build is under 400 KB. This is a build-size measurement, not an iPad performance benchmark.

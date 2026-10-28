@@ -2,17 +2,26 @@ import { writeFile, unlink } from "node:fs/promises";
 import { test, expect } from "@playwright/test";
 import { areas } from "../../src/model";
 import type { Page } from "@playwright/test";
+// Wait for the zoom and pop-in animations to finish so geometry is final.
+async function settle(page: Page) {
+  await page.waitForFunction(() =>
+    document
+      .getAnimations()
+      .every(
+        (a) =>
+          a.playState !== "running" ||
+          a.effect?.getTiming().iterations === Infinity,
+      ),
+  );
+}
 async function openToy(page: Page, area: string, toy: string) {
   await page.getByRole("button", { name: "Layla Board playroom" }).click();
-  while (
-    !(await page.getByRole("button", { name: area, exact: false }).count())
-  )
-    await page.getByRole("button", { name: "Next play areas" }).click();
   await page.getByRole("button", { name: area, exact: false }).click();
   await page.getByRole("button", { name: toy, exact: false }).click();
   await expect(
     page.getByRole("heading", { level: 1, name: toy, exact: true }),
   ).toBeVisible();
+  await settle(page);
 }
 async function settings(page: Page) {
   await page.getByRole("button", { name: "Grown-ups" }).click();
@@ -26,6 +35,7 @@ async function settings(page: Page) {
 test("every initial activity mounts, responds, resets and returns to its shelf", async ({
   page,
 }) => {
+  test.setTimeout(120_000);
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await page.goto("./");
@@ -156,12 +166,12 @@ test("offline shell and toys work after completed precache", async ({
   await expect(page.getByRole("switch", { name: "Round lamp" })).toBeChecked();
   await context.setOffline(false);
 });
-test("phone layout has three areas and no horizontal overflow", async ({
+test("phone layout shows every area on one map without horizontal overflow", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("./");
-  await expect(page.locator(".area-card")).toHaveCount(3);
+  await expect(page.locator(".area-card")).toHaveCount(areas.length);
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= window.innerWidth,

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { PointerEvent as RP, ReactNode } from "react";
 import { Art } from "./Art";
-import { tone, stopAudio } from "./audio";
+import { tone, sfx, stopAudio } from "./audio";
 import { mixColors, traceTrack } from "./model";
 import type { Preferences, Track } from "./model";
 type State = {
@@ -25,7 +25,7 @@ export const freshState = (): State => ({
   strokes: [],
   message: "",
 });
-const colors = ["#d97868", "#e8bd57", "#78a7b4", "#8ca983"];
+const colors = ["#FF7A6B", "#FFC94A", "#3BA7E0", "#6CC07A"];
 const labels = ["Coral", "Honey", "Sky", "Leaf"];
 const symbols = ["☀", "✿", "☁", "★", "♥", "☾", "◆", "♧"];
 export function Toy({
@@ -269,9 +269,10 @@ export function Toy({
       setSelected("");
       return;
     }
-    sound(260);
+    sfx(prefs, "plop", 0.8 + Math.random() * 0.5);
     if (name === "Colour Kitchen") {
       if (s.items.length < 2) update({ items: [...s.items, id] });
+      if (s.items.length === 1) sfx(prefs, "sparkle");
     }
     if (name === "Habitat Homes") {
       update({
@@ -296,12 +297,13 @@ export function Toy({
       setVal(i, Math.min(5, val(i) + 1));
     }
     if (name === "Shape Sorter") {
-      if (id === target)
+      if (id === target) {
+        sfx(prefs, "sparkle");
         update({
           items: [...new Set([...s.items, id])],
           message: `${id} is home.`,
         });
-      else update({ message: "Try another shape, or keep exploring." });
+      } else update({ message: "Try another shape, or keep exploring." });
     }
     if (name === "Block Builder" || name === "Sticker Stories") {
       const r = document
@@ -391,7 +393,7 @@ export function Toy({
                 className={`toggle ${val(i) ? "on" : ""}`}
                 onClick={() => {
                   setVal(i, 1 - val(i));
-                  sound();
+                  sfx(prefs, "click", val(i) ? 0.8 : 1.2);
                 }}
               >
                 <span />
@@ -424,8 +426,11 @@ export function Toy({
                 className={`door ${val(i) === 2 ? "open" : ""}`}
                 aria-label={`Door ${i + 1}, ${val(i) === 2 ? "open: close" : val(i) === 1 ? "unlatched: open" : "latched"}`}
                 onClick={() => {
-                  if (val(i)) setVal(i, val(i) === 2 ? 1 : 2);
-                  else update({ message: "Touch the latch to open the door." });
+                  if (val(i)) {
+                    setVal(i, val(i) === 2 ? 1 : 2);
+                    if (val(i) === 1) sfx(prefs, "sparkle", 0.9 + i * 0.1);
+                  } else
+                    update({ message: "Touch the latch to open the door." });
                 }}
               >
                 {val(i) === 2 ? (
@@ -439,7 +444,7 @@ export function Toy({
                 aria-label={`${label}, ${val(i) ? "unlatched" : "latched"}`}
                 onClick={() => {
                   setVal(i, val(i) ? 0 : 1);
-                  sound(210);
+                  sfx(prefs, "click", 0.7);
                 }}
               >
                 {val(i) ? "↔" : i === 0 ? "━" : i === 1 ? "◉" : "⌁"}
@@ -695,7 +700,7 @@ export function Toy({
                 <>
                   <span
                     className="dropper"
-                    style={{ color: ["#d97868", "#e8bd57", "#78a7b4"][i] }}
+                    style={{ color: ["#FF5A4E", "#FFC94A", "#3BA7E0"][i] }}
                   >
                     {["●", "◆", "▲"][i]}
                   </span>
@@ -713,14 +718,14 @@ export function Toy({
                   background:
                     (
                       {
-                        red: "#d97868",
-                        yellow: "#e8bd57",
-                        blue: "#78a7b4",
-                        orange: "#df9b58",
-                        purple: "#a894c3",
-                        green: "#8ca983",
+                        red: "#FF5A4E",
+                        yellow: "#FFC94A",
+                        blue: "#3BA7E0",
+                        orange: "#FF9F3A",
+                        purple: "#8C6BE0",
+                        green: "#6CC07A",
                       } as Record<string, string>
-                    )[result] || "#eee5d6",
+                    )[result] || "#F3E8D6",
                 }}
               >
                 {s.items.map((c, i) => (
@@ -890,7 +895,7 @@ export function Toy({
                               : "M50 0Q50 50 100 50"
                           }
                           fill="none"
-                          stroke="#ac8059"
+                          stroke="#C98A55"
                           strokeWidth="22"
                         />
                         <path
@@ -1031,7 +1036,8 @@ export function Toy({
                 aria-label={`Pot ${i + 1}: ${["plant seed", "water seed", "pick flower"][val(i) % 3]}`}
                 onClick={() => {
                   setVal(i, (val(i) + 1) % 3);
-                  sound(300 + i * 70);
+                  if (val(i) === 1) sfx(prefs, "sparkle", 1 + i * 0.12);
+                  else sfx(prefs, "plop", 1 + i * 0.15);
                 }}
               >
                 {val(i) === 2 ? (
@@ -1133,7 +1139,10 @@ export function Toy({
                 left: `${(val(i, i * 24) + 12) % 78}%`,
                 top: `${15 + i * 18}%`,
               }}
-              onClick={() => setVal(i, (val(i, i * 24) + 22) % 78)}
+              onClick={() => {
+                setVal(i, (val(i, i * 24) + 22) % 78);
+                sfx(prefs, "whoosh", 0.6 + i * 0.1);
+              }}
             >
               <svg viewBox="0 0 200 100" aria-hidden="true">
                 <path
@@ -1194,7 +1203,7 @@ export function Toy({
               onClick={() => {
                 if (!val(i)) {
                   setVal(i, 1);
-                  sound(520 + i * 35);
+                  sfx(prefs, "pop", 0.8 + i * 0.07);
                 }
               }}
             >
@@ -1248,7 +1257,10 @@ export function Toy({
                     (["☀", "✿", "☁"][val(0, -1)] || "○") +
                     (["☀", "✿", "☁"][val(1, -1)] || "○"),
                 });
-                sound(190);
+                sfx(prefs, "whoosh", 1.4);
+                timers.current.push(
+                  setTimeout(() => sfx(prefs, "sparkle", 1.2), 260),
+                );
               }}
             >
               ↻
@@ -1327,7 +1339,7 @@ export function Creature({
           <ellipse cx="99" cy="38" rx="13" ry="33" fill="#fff5e2" />
         </>
       ) : kind === "Cat" ? (
-        <path d="m34 65-1-46 35 29m31 0 30-30 2 48" fill="#dca170" />
+        <path d="m34 65-1-46 35 29m31 0 30-30 2 48" fill="#FFB38A" />
       ) : null}
       <ellipse
         cx="80"
@@ -1336,35 +1348,35 @@ export function Creature({
         ry="47"
         fill={
           kind === "Frog"
-            ? "#96b78a"
+            ? "#7ED07A"
             : kind === "Bird"
-              ? "#87b5bc"
+              ? "#3BA7E0"
               : kind === "Cat"
-                ? "#dca170"
+                ? "#FFB38A"
                 : "#fff5e2"
         }
       />
       {kind === "Frog" && (
         <>
-          <circle cx="49" cy="51" r="18" fill="#96b78a" />
-          <circle cx="109" cy="51" r="18" fill="#96b78a" />
+          <circle cx="49" cy="51" r="18" fill="#7ED07A" />
+          <circle cx="109" cy="51" r="18" fill="#7ED07A" />
         </>
       )}
-      <circle cx="60" cy="80" r="4" fill="#35434a" />
-      <circle cx="99" cy="80" r="4" fill="#35434a" />
+      <circle cx="60" cy="80" r="4" fill="#2E2A3B" />
+      <circle cx="99" cy="80" r="4" fill="#2E2A3B" />
       {kind === "Bird" ? (
-        <path d="m72 90 18 0-9 12z" fill="#e3ba69" />
+        <path d="m72 90 18 0-9 12z" fill="#FFC94A" />
       ) : (
         <path
           d={happy ? "M61 101q19 19 38 0" : "M69 103q11 8 22 0"}
           fill="none"
-          stroke="#35434a"
+          stroke="#2E2A3B"
           strokeWidth="3"
           strokeLinecap="round"
         />
       )}
-      <ellipse cx="48" cy="97" rx="8" ry="5" fill="#e8b5a4" />
-      <ellipse cx="112" cy="97" rx="8" ry="5" fill="#e8b5a4" />
+      <ellipse cx="48" cy="97" rx="8" ry="5" fill="#FF9C8F" />
+      <ellipse cx="112" cy="97" rx="8" ry="5" fill="#FF9C8F" />
     </svg>
   );
 }
