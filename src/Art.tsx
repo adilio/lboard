@@ -45,6 +45,27 @@ const Shine = ({ d }: { d: string }) => (
     opacity=".75"
   />
 );
+function gearTeeth(
+  cx: number,
+  cy: number,
+  r: number,
+  inner: number,
+  n: number,
+) {
+  const pts: string[] = [];
+  for (let i = 0; i < n * 2; i++) {
+    const a0 = (i / (n * 2)) * Math.PI * 2 + 0.08;
+    const a1 = ((i + 1) / (n * 2)) * Math.PI * 2 - 0.08;
+    const rr = i % 2 ? inner : r;
+    pts.push(
+      `${(cx + Math.cos(a0) * rr).toFixed(1)},${(cy + Math.sin(a0) * rr).toFixed(1)}`,
+    );
+    pts.push(
+      `${(cx + Math.cos(a1) * rr).toFixed(1)},${(cy + Math.sin(a1) * rr).toFixed(1)}`,
+    );
+  }
+  return `M${pts.join("L")}Z`;
+}
 const drawings: Record<string, () => React.ReactNode> = {
   switch: () => (
     <>
@@ -633,6 +654,484 @@ const drawings: Record<string, () => React.ReactNode> = {
       <circle cx="120" cy="20" r="9" fill={sun} />
       <rect x="40" y="156" width="26" height="10" rx="4" fill={woodDark} />
       <rect x="114" y="156" width="26" height="10" rx="4" fill={woodDark} />
+    </>
+  ),
+  workshop: () => (
+    <>
+      <path d="M20 70 100 22l80 48z" fill="#E8604F" />
+      <rect x="30" y="68" width="140" height="94" rx="6" fill={wood} />
+      <path
+        d="M30 92h140M30 120h140"
+        stroke={woodDark}
+        strokeWidth="3"
+        opacity=".35"
+      />
+      <rect x="44" y="82" width="34" height="46" rx="8" fill={ink} />
+      <rect x="49" y="86" width="24" height="18" rx="6" fill={cream} />
+      <circle cx="122" cy="108" r="26" fill={sun} />
+      <path d={gearTeeth(122, 108, 30, 22, 10)} fill={sun} />
+      <circle cx="122" cy="108" r="8" fill={woodDark} />
+      <rect x="86" y="132" width="34" height="30" rx="4" fill={lagoon} />
+      <circle cx="113" cy="148" r="3" fill={sun} />
+    </>
+  ),
+  gears: () => (
+    <>
+      <path d={gearTeeth(70, 100, 46, 36, 10)} fill={coral} />
+      <circle cx="70" cy="100" r="22" fill="#ff9c8f" />
+      <circle cx="70" cy="100" r="9" fill={cream} />
+      <path d={gearTeeth(134, 70, 34, 26, 8)} fill={lagoon} />
+      <circle cx="134" cy="70" r="14" fill="#7cc8f2" />
+      <circle cx="134" cy="70" r="6" fill={cream} />
+      <path d={gearTeeth(142, 136, 28, 21, 7)} fill={leaf} />
+      <circle cx="142" cy="136" r="6" fill={cream} />
+      <path
+        d="M70 100V40"
+        stroke={woodDark}
+        strokeWidth="8"
+        strokeLinecap="round"
+      />
+      <circle cx="70" cy="38" r="12" fill={sun} />
+    </>
+  ),
+  xylophone: () => (
+    <>
+      <path
+        d="M22 70l158 26M22 134l158-12"
+        stroke={woodDark}
+        strokeWidth="8"
+        strokeLinecap="round"
+      />
+      {["#FF5A4E", "#FF9F3A", "#FFC94A", "#6CC07A", "#3BA7E0", "#8C6BE0"].map(
+        (c, i) => (
+          <rect
+            key={c}
+            x={30 + i * 24}
+            y={56 + i * 6}
+            width="20"
+            height={96 - i * 10}
+            rx="7"
+            fill={c}
+          />
+        ),
+      )}
+      <path
+        d="M140 24l-36 56"
+        stroke={wood}
+        strokeWidth="7"
+        strokeLinecap="round"
+      />
+      <circle cx="144" cy="20" r="12" fill={berry} />
+    </>
+  ),
+  band: () => (
+    <>
+      <ellipse cx="100" cy="158" rx="88" ry="14" fill="#8a5a3644" />
+      <circle cx="62" cy="96" r="34" fill="#7ED07A" />
+      <circle cx="50" cy="72" r="12" fill="#7ED07A" />
+      <circle cx="74" cy="72" r="12" fill="#7ED07A" />
+      <circle cx="50" cy="72" r="5" fill={ink} />
+      <circle cx="74" cy="72" r="5" fill={ink} />
+      <path
+        d="M50 104q12 10 24 0"
+        stroke={ink}
+        strokeWidth="4"
+        fill="none"
+        strokeLinecap="round"
+      />
+      <circle cx="140" cy="100" r="32" fill="#A0683C" />
+      <circle cx="116" cy="74" r="12" fill="#A0683C" />
+      <circle cx="164" cy="74" r="12" fill="#A0683C" />
+      <ellipse cx="140" cy="112" rx="16" ry="12" fill="#E0B07A" />
+      <circle cx="130" cy="94" r="4" fill={ink} />
+      <circle cx="150" cy="94" r="4" fill={ink} />
+      <ellipse cx="100" cy="150" rx="30" ry="12" fill={coral} />
+      <ellipse cx="100" cy="144" rx="30" ry="10" fill={cream} />
+      <path
+        d="M100 22v26l14 4"
+        stroke={ink}
+        strokeWidth="5"
+        fill="none"
+        strokeLinecap="round"
+      />
+      <circle cx="94" cy="48" r="7" fill={ink} />
+    </>
+  ),
+  barn: () => (
+    <>
+      <path d="M24 78 100 26l76 52v84H24z" fill="#E8443A" />
+      <path
+        d="M14 82 100 20l86 62"
+        stroke={cream}
+        strokeWidth="10"
+        fill="none"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <rect x="84" y="50" width="32" height="26" rx="4" fill={cream} />
+      <rect x="88" y="54" width="24" height="18" fill="#FFD54A" />
+      <rect x="62" y="96" width="76" height="66" fill={cream} />
+      <path d="M62 96l76 66M138 96l-76 66" stroke="#E8443A" strokeWidth="6" />
+      <rect
+        x="62"
+        y="96"
+        width="76"
+        height="66"
+        fill="none"
+        stroke={cream}
+        strokeWidth="6"
+      />
+      <circle cx="160" cy="148" r="14" fill="#FFF" />
+      <circle cx="154" cy="144" r="3" fill={ink} />
+    </>
+  ),
+  feed: () => (
+    <>
+      <ellipse cx="100" cy="122" rx="46" ry="40" fill={cream} />
+      <ellipse
+        cx="80"
+        cy="54"
+        rx="11"
+        ry="32"
+        fill={cream}
+        transform="rotate(-10 80 54)"
+      />
+      <ellipse
+        cx="120"
+        cy="54"
+        rx="11"
+        ry="32"
+        fill={cream}
+        transform="rotate(10 120 54)"
+      />
+      <ellipse
+        cx="80"
+        cy="56"
+        rx="5"
+        ry="22"
+        fill="#FFB3C7"
+        transform="rotate(-10 80 56)"
+      />
+      <ellipse
+        cx="120"
+        cy="56"
+        rx="5"
+        ry="22"
+        fill="#FFB3C7"
+        transform="rotate(10 120 56)"
+      />
+      <circle cx="86" cy="112" r="5" fill={ink} />
+      <circle cx="114" cy="112" r="5" fill={ink} />
+      <ellipse cx="100" cy="132" rx="10" ry="12" fill={ink} />
+      <path
+        d="M150 112l-44 18"
+        stroke="#FF9F3A"
+        strokeWidth="14"
+        strokeLinecap="round"
+      />
+      <path
+        d="M152 112q8-14 18-14M152 112q14-4 20 6"
+        stroke={leaf}
+        strokeWidth="5"
+        strokeLinecap="round"
+        fill="none"
+      />
+    </>
+  ),
+  stamp: () => (
+    <>
+      <rect x="30" y="118" width="140" height="42" rx="10" fill={berry} />
+      <rect x="40" y="124" width="120" height="30" rx="6" fill="#c4447a" />
+      <path d="M100 30q-30 0-30 24v20h60V54q0-24-30-24z" fill={wood} />
+      <rect x="64" y="72" width="72" height="26" rx="6" fill={woodDark} />
+      <path
+        d="M100 100l8 16 18 2-13 12 3 18-16-9-16 9 3-18-13-12 18-2z"
+        fill={sun}
+      />
+    </>
+  ),
+  mirror: () => (
+    <>
+      <circle cx="100" cy="90" r="72" fill="#24304F" />
+      {[0, 1, 2, 3, 4, 5].map((i) => (
+        <ellipse
+          key={i}
+          cx="100"
+          cy="52"
+          rx="13"
+          ry="34"
+          fill={
+            ["#FF7A6B", "#FFC94A", "#6CC07A", "#3BA7E0", "#8C6BE0", "#E05A8C"][
+              i
+            ]
+          }
+          opacity=".9"
+          transform={`rotate(${i * 60} 100 90)`}
+        />
+      ))}
+      <circle cx="100" cy="90" r="12" fill="#FFF6C9" />
+    </>
+  ),
+  town: () => (
+    <>
+      <rect x="18" y="80" width="70" height="80" rx="6" fill={peach} />
+      <path d="M12 84 53 46l41 38z" fill={coral} />
+      <rect x="42" y="118" width="22" height="42" rx="4" fill={lagoon} />
+      <rect x="98" y="64" width="86" height="96" rx="6" fill="#FFF8EC" />
+      <path
+        d="M92 70h98"
+        stroke={berry}
+        strokeWidth="14"
+        strokeLinecap="round"
+      />
+      <path d="M120 96h40v24h-40z" fill="#BDE7FF" />
+      <path
+        d="M140 92v32M136 108h8"
+        stroke={coral}
+        strokeWidth="6"
+        strokeLinecap="round"
+      />
+      <rect x="128" y="132" width="24" height="28" rx="4" fill={leaf} />
+    </>
+  ),
+  kitchen: () => (
+    <>
+      <rect x="32" y="96" width="136" height="62" rx="10" fill={lagoon} />
+      <rect x="40" y="82" width="120" height="18" rx="6" fill="#7A869A" />
+      <path d="M44 82q0-36 56-36t56 36z" fill="#C9D3E3" />
+      <rect x="92" y="38" width="16" height="10" rx="4" fill={ink} />
+      <path
+        d="M70 40q-6-14 4-24M100 34q-6-14 4-24M130 40q-6-14 4-24"
+        stroke="#fff"
+        strokeWidth="5"
+        fill="none"
+        strokeLinecap="round"
+        opacity=".8"
+      />
+      <circle cx="62" cy="128" r="10" fill={sun} />
+      <circle cx="100" cy="128" r="10" fill={sun} />
+      <circle cx="138" cy="128" r="10" fill={sun} />
+    </>
+  ),
+  clinic: () => (
+    <>
+      <circle cx="56" cy="56" r="20" fill="#D9A066" />
+      <circle cx="144" cy="56" r="20" fill="#D9A066" />
+      <circle cx="100" cy="98" r="62" fill="#D9A066" />
+      <ellipse cx="100" cy="116" rx="28" ry="20" fill="#FFE2BC" />
+      <ellipse cx="100" cy="106" rx="9" ry="6" fill="#6B4A2E" />
+      <circle cx="78" cy="88" r="6" fill={ink} />
+      <circle cx="122" cy="88" r="6" fill={ink} />
+      <path
+        d="M90 124q10 8 20 0"
+        stroke={ink}
+        strokeWidth="4"
+        fill="none"
+        strokeLinecap="round"
+      />
+      <g transform="rotate(-25 136 66)">
+        <rect x="110" y="56" width="52" height="20" rx="10" fill={peach} />
+        <rect x="128" y="56" width="16" height="20" fill="#FFD9C2" />
+      </g>
+      <path
+        d="M170 140h-24M158 128v24"
+        stroke={coral}
+        strokeWidth="8"
+        strokeLinecap="round"
+      />
+    </>
+  ),
+  treehouse: () => (
+    <>
+      <rect x="88" y="100" width="24" height="64" fill={woodDark} />
+      <circle cx="100" cy="70" r="58" fill={leaf} />
+      <circle cx="56" cy="90" r="30" fill="#4FB45E" />
+      <circle cx="146" cy="88" r="30" fill="#4FB45E" />
+      <rect x="66" y="74" width="68" height="46" rx="6" fill={wood} />
+      <path d="M58 78l42-30 42 30z" fill={coral} />
+      <rect x="76" y="86" width="20" height="18" rx="3" fill="#FFF6C9" />
+      <text
+        x="114"
+        y="104"
+        fontSize="20"
+        fontWeight="800"
+        fill={cream}
+        fontFamily="ui-rounded, system-ui"
+      >
+        abc
+      </text>
+      <path
+        d="M126 120v44M140 120v44M126 132h14M126 146h14M126 160h14"
+        stroke={woodDark}
+        strokeWidth="4"
+      />
+    </>
+  ),
+  critters: () => (
+    <>
+      <path d="M50 150q-6-60 40-96 22 70-40 96z" fill="#E0E6EE" />
+      <rect
+        x="44"
+        y="70"
+        width="112"
+        height="90"
+        rx="20"
+        fill="#BDE7FF"
+        opacity=".8"
+      />
+      <rect x="54" y="56" width="92" height="18" rx="8" fill={wood} />
+      {[
+        [80, 120],
+        [118, 128],
+        [100, 98],
+      ].map(([x, y], i) => (
+        <g key={i}>
+          <circle cx={x} cy={y - 10} r="7" fill={ink} />
+          <ellipse cx={x} cy={y + 2} rx="15" ry="13" fill="#E8604F" />
+          <path d={`M${x} ${y - 10}v24`} stroke={ink} strokeWidth="2.5" />
+          <circle cx={x - 6} cy={y + 2} r="3" fill={ink} />
+          <circle cx={x + 6} cy={y + 2} r="3" fill={ink} />
+        </g>
+      ))}
+      <text
+        x="150"
+        y="44"
+        fontSize="40"
+        fontWeight="800"
+        fill={plum}
+        fontFamily="ui-rounded, system-ui"
+      >
+        3
+      </text>
+    </>
+  ),
+  letters: () => (
+    <>
+      {[
+        ["a", coral, 30, 70, -8],
+        ["b", lagoon, 82, 50, 6],
+        ["c", leaf, 134, 74, -4],
+      ].map(([l, c, x, y, r]) => (
+        <g
+          key={l as string}
+          transform={`rotate(${r} ${(x as number) + 26} ${(y as number) + 30})`}
+        >
+          <rect
+            x={x as number}
+            y={y as number}
+            width="54"
+            height="60"
+            rx="16"
+            fill={c as string}
+          />
+          <text
+            x={(x as number) + 27}
+            y={(y as number) + 44}
+            textAnchor="middle"
+            fontSize="38"
+            fontWeight="800"
+            fill="#fff"
+            fontFamily="Andika, ui-rounded, system-ui"
+          >
+            {l}
+          </text>
+          <circle
+            cx={(x as number) + 18}
+            cy={(y as number) + 52}
+            r="3"
+            fill={ink}
+          />
+          <circle
+            cx={(x as number) + 36}
+            cy={(y as number) + 52}
+            r="3"
+            fill={ink}
+          />
+        </g>
+      ))}
+    </>
+  ),
+  tent: () => (
+    <>
+      <circle cx="148" cy="40" r="22" fill="#FFF6C9" />
+      <circle cx="158" cy="34" r="18" fill="#6C7FD8" />
+      <path d="M100 30 26 158h148z" fill={plum} />
+      <path d="M100 30 74 158h52z" fill="#B39CFF" />
+      <path d="M100 96l-18 62h36z" fill="#2E2A3B" />
+      <circle cx="94" cy="132" r="4" fill="#FFE66D" />
+      <circle cx="106" cy="132" r="4" fill="#FFE66D" />
+      {[
+        [40, 40],
+        [64, 60],
+        [180, 90],
+      ].map(([x, y], i) => (
+        <path
+          key={i}
+          d={`M${x} ${y - 7}l2 5 5 2-5 2-2 5-2-5-5-2 5-2z`}
+          fill="#FFF6C9"
+        />
+      ))}
+    </>
+  ),
+  balloon: () => (
+    <>
+      <ellipse cx="100" cy="76" rx="54" ry="62" fill="#FF8FC0" />
+      <ellipse cx="80" cy="52" rx="10" ry="18" fill="#fff" opacity=".4" />
+      <path
+        d="M86 78q6-6 12 0M104 78q6-6 12 0"
+        stroke={ink}
+        strokeWidth="4"
+        fill="none"
+        strokeLinecap="round"
+      />
+      <path
+        d="M92 96q8 6 16 0"
+        stroke={ink}
+        strokeWidth="4"
+        fill="none"
+        strokeLinecap="round"
+      />
+      <path d="M94 138h12l-6 8z" fill="#FF8FC0" />
+      <path
+        d="M100 146q-10 10 2 18"
+        stroke={ink}
+        strokeWidth="2.5"
+        fill="none"
+      />
+      <path
+        d="M30 140c-12-2-10-18 2-18 0-14 22-18 28-6 14-4 20 22 6 24z"
+        fill="#fff"
+      />
+    </>
+  ),
+  stars: () => (
+    <>
+      <rect x="20" y="20" width="160" height="140" rx="24" fill="#24304F" />
+      <path
+        d="M50 60 92 44l40 30-30 40-44-12z"
+        fill="none"
+        stroke="#FFF6C9"
+        strokeWidth="3"
+        strokeDasharray="3 7"
+        strokeLinecap="round"
+      />
+      {[
+        [50, 60],
+        [92, 44],
+        [132, 74],
+        [102, 114],
+        [58, 102],
+      ].map(([x, y], i) => (
+        <path
+          key={i}
+          d={`M${x} ${y - 12}l3 9 9 3-9 3-3 9-3-9-9-3 9-3z`}
+          fill="#FFE066"
+        />
+      ))}
+      <path
+        d="M20 140l30-14 30 14 30-18 30 18 40-10v26q0 4-24 4H44q-24 0-24-4z"
+        fill="#141838"
+      />
     </>
   ),
 };

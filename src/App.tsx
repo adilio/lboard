@@ -1,10 +1,20 @@
 import { useEffect, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
 import type { MouseEvent as RM } from "react";
-import { areas, defaults, toyArt, validatePreferences } from "./model";
-import type { Preferences } from "./model";
+import {
+  areas,
+  calmIds,
+  cleanName,
+  defaults,
+  toyArt,
+  validatePreferences,
+} from "./model";
+import type { Preferences, Voice } from "./model";
 import { Art, Icon } from "./Art";
-import { Toy, freshState } from "./Toys";
+import { activities, descriptions } from "./activities";
+import { clearSaved } from "./play/store";
+import { hush } from "./play/speech";
+import { IdleHint } from "./play/IdleHint";
 import {
   stopAudio,
   startMusic,
@@ -21,7 +31,6 @@ const questions = [
   { q: "What is 6 + 8?", answers: [14, 12, 16], correct: 14 },
   { q: "What is 9 + 4?", answers: [11, 15, 13], correct: 13 },
 ];
-type PlayState = ReturnType<typeof freshState>;
 function load() {
   try {
     return {
@@ -42,7 +51,6 @@ export default function App() {
   const [areaId, setArea] = useState<string | null>(null);
   const [toy, setToy] = useState<string | null>(null);
   const [resetVersion, setResetVersion] = useState(0);
-  const [states, setStates] = useState<Record<string, PlayState>>({});
   const [parent, setParent] = useState<
     "closed" | "hold" | "question" | "settings"
   >("closed");
@@ -80,11 +88,12 @@ export default function App() {
   const title = useRef<HTMLHeadingElement>(null);
   const parentButton = useRef<HTMLButtonElement>(null);
   const area = areas.find((a) => a.id === areaId);
-  const visibleAreas = areas.filter((a) =>
-    prefs.calmMode
-      ? a.id === "calm"
-      : a.toys.some((t) => prefs.enabledActivityIds.includes(t)),
-  );
+  const shown = (t: string) =>
+    prefs.calmMode ? calmIds.includes(t) : prefs.enabledActivityIds.includes(t);
+  const visibleAreas = areas.filter((a) => a.toys.some(shown));
+  const areaToys = area ? area.toys.filter(shown) : [];
+  // A room with one activity opens it directly (spec §10 room skip rule).
+  const skipped = areaToys.length === 1;
   const mainRef = useRef<HTMLElement>(null);
   const fxCanvas = useRef<HTMLCanvasElement>(null);
   useEffect(() => startTouchFX(fxCanvas.current!), []);
@@ -98,6 +107,7 @@ export default function App() {
       dir,
     });
     stopAudio();
+    hush();
     sfx(prefs, "whoosh", dir === "in" ? 1 : 0.7);
     next();
     window.scrollTo({ top: 0 });
@@ -220,7 +230,7 @@ export default function App() {
     if (e.key !== "Tab") return;
     const elements = [
       ...dialog.current!.querySelectorAll<HTMLElement>(
-        "button:not(:disabled),input,summary,a[href]",
+        "button:not(:disabled),input,select,summary,a[href]",
       ),
     ];
     const first = elements[0],
@@ -338,8 +348,15 @@ export default function App() {
                 <div className="activity-header">
                   <button
                     className="round-nav home-button"
-                    aria-label={`Back to ${area.name}`}
-                    onClick={(e) => go(e, "out", () => setToy(null))}
+                    aria-label={
+                      skipped ? "Back to playroom" : `Back to ${area.name}`
+                    }
+                    onClick={(e) =>
+                      go(e, "out", () => {
+                        setToy(null);
+                        if (skipped) setArea(null);
+                      })
+                    }
                   >
                     <Icon name="home" />
                   </button>
@@ -353,14 +370,10 @@ export default function App() {
                     className="round-nav reset-button"
                     aria-label={`Reset ${toy}`}
                     onClick={() => {
-                      if (
-                        toy === "Finger Paint" &&
-                        !window.confirm("Start a fresh piece of paper?")
-                      )
-                        return;
                       stopAudio();
+                      hush();
                       sfx(prefs, "sparkle", 0.8);
-                      setStates((p) => ({ ...p, [toy]: freshState() }));
+                      clearSaved(toy);
                       setResetVersion((v) => v + 1);
                     }}
                   >
@@ -368,15 +381,12 @@ export default function App() {
                   </button>
                 </div>
                 <section className="activity-stage">
-                  <Toy
+                  <ActivityView
                     key={`${toy}:${resetVersion}`}
                     name={toy}
                     prefs={prefs}
-                    state={states[toy] || freshState()}
-                    onChange={(state) =>
-                      setStates((p) => ({ ...p, [toy]: state }))
-                    }
                   />
+                  <IdleHint key={`hint:${toy}:${resetVersion}`} />
                 </section>
               </div>
             ) : area ? (
@@ -403,34 +413,29 @@ export default function App() {
                   className="toy-shelf"
                   aria-label={`${area.name} activities`}
                 >
-                  {area.toys
-                    .filter(
-                      (t) =>
-                        prefs.calmMode || prefs.enabledActivityIds.includes(t),
-                    )
-                    .map((t, i) => (
-                      <button
-                        key={t}
-                        className="activity-card tilt"
-                        style={{ "--i": i } as React.CSSProperties}
-                        onClick={(e) => {
-                          go(e, "in", () => setToy(t));
-                          tone(prefs, pentatonic[5 + i * 2]);
-                        }}
-                      >
-                        <span className="card-face">
-                          <span className="activity-art">
-                            <span className="art-glow" />
-                            <Art kind={toyArt[t]} />
-                          </span>
-                          <span className="activity-card-text">
-                            <strong>{t}</strong>
-                            <span>{activityDescriptions[t]}</span>
-                          </span>
-                          <span className="card-shine" />
+                  {areaToys.map((t, i) => (
+                    <button
+                      key={t}
+                      className="activity-card tilt"
+                      style={{ "--i": i } as React.CSSProperties}
+                      onClick={(e) => {
+                        go(e, "in", () => setToy(t));
+                        tone(prefs, pentatonic[5 + i * 2]);
+                      }}
+                    >
+                      <span className="card-face">
+                        <span className="activity-art">
+                          <span className="art-glow" />
+                          <Art kind={toyArt[t]} />
                         </span>
-                      </button>
-                    ))}
+                        <span className="activity-card-text">
+                          <strong>{t}</strong>
+                          <span>{descriptions[t]}</span>
+                        </span>
+                        <span className="card-shine" />
+                      </span>
+                    </button>
+                  ))}
                 </section>
               </div>
             ) : (
@@ -453,7 +458,11 @@ export default function App() {
                         } as React.CSSProperties
                       }
                       onClick={(e) => {
-                        go(e, "in", () => setArea(a.id));
+                        const own = a.toys.filter(shown);
+                        go(e, "in", () => {
+                          setArea(a.id);
+                          if (own.length === 1) setToy(own[0]);
+                        });
                         tone(prefs, pentatonic[i % pentatonic.length]);
                       }}
                     >
@@ -619,7 +628,7 @@ export default function App() {
                   </Setting>
                   <Setting
                     label="Calm mode"
-                    detail="Show only the two Calm Corner activities."
+                    detail="Show only the gentlest activities: Cozy Nook, the art tools and the xylophone."
                   >
                     <input
                       type="checkbox"
@@ -631,6 +640,70 @@ export default function App() {
                       }}
                     />
                   </Setting>
+                </section>
+                <section>
+                  <h3>Words and names</h3>
+                  <label className="setting-row">
+                    <span>
+                      <strong>Spoken words</strong>
+                      <small>
+                        Uses this device’s built-in voice. “Names only” keeps
+                        numbers, letters, colours and names but skips hints.
+                      </small>
+                    </span>
+                    <select
+                      value={prefs.voice}
+                      onChange={(e) => change("voice", e.target.value as Voice)}
+                    >
+                      <option value="on">On</option>
+                      <option value="names">Names only</option>
+                      <option value="off">Off</option>
+                    </select>
+                  </label>
+                  <label className="setting-row">
+                    <span>
+                      <strong>Child’s name</strong>
+                      <small>
+                        Letter Friends builds this name. Letters only.
+                      </small>
+                    </span>
+                    <input
+                      type="text"
+                      className="name-input"
+                      maxLength={10}
+                      autoComplete="off"
+                      defaultValue={prefs.childName}
+                      onBlur={(e) => {
+                        const n = cleanName(e.target.value) || "Layla";
+                        e.target.value = n;
+                        change("childName", n);
+                      }}
+                    />
+                  </label>
+                  <label className="setting-row">
+                    <span>
+                      <strong>Family names</strong>
+                      <small>
+                        Up to six, separated by commas (Mom, Dad, Biscuit).
+                      </small>
+                    </span>
+                    <input
+                      type="text"
+                      className="name-input"
+                      autoComplete="off"
+                      defaultValue={prefs.familyNames.join(", ")}
+                      onBlur={(e) =>
+                        change(
+                          "familyNames",
+                          e.target.value
+                            .split(",")
+                            .map(cleanName)
+                            .filter(Boolean)
+                            .slice(0, 6),
+                        )
+                      }
+                    />
+                  </label>
                 </section>
                 <section>
                   <h3>Make room for favourites</h3>
@@ -828,25 +901,7 @@ function Setting({
     </label>
   );
 }
-const activityDescriptions: Record<string, string> = {
-  Switchboard: "A flick, a click, a little light.",
-  "Latch House": "Who could be behind the door?",
-  "Little Piano": "Six little keys. Your very own tune.",
-  "Drum Basket": "Tap out a rhythm all your own.",
-  "Animal Friends": "Say hello to some gentle friends.",
-  "Habitat Homes": "A pond, a meadow, a place to visit.",
-  "Finger Paint": "Make a mark. Make it yours.",
-  "Sticker Stories": "Small pieces, endless little stories.",
-  "Colour Kitchen": "A drop of this, a new colour.",
-  "Float or Sink": "What will the water do?",
-  "Block Builder": "Build something wonderfully you.",
-  "Track Maker": "A winding way for a little ball.",
-  "Picnic Kitchen": "A little feast for a little friend.",
-  "Garden Patch": "Plant a seed. Help it grow.",
-  "Counting Picnic": "One berry, two berries, a picnic.",
-  "Shape Sorter": "A little home for every shape.",
-  "Cloud Window": "A quiet moment under the sky.",
-  "Feelings Faces": "So many ways a face can be.",
-  "Bubble Meadow": "A gentle pop. A little surprise.",
-  "Silly Machine": "Mix a little bit of silly.",
-};
+function ActivityView({ name, prefs }: { name: string; prefs: Preferences }) {
+  const Activity = activities[name];
+  return Activity ? <Activity prefs={prefs} /> : null;
+}

@@ -17,7 +17,9 @@ async function settle(page: Page) {
 async function openToy(page: Page, area: string, toy: string) {
   await page.getByRole("button", { name: "Layla Board playroom" }).click();
   await page.getByRole("button", { name: area, exact: false }).click();
-  await page.getByRole("button", { name: toy, exact: false }).click();
+  const single = areas.find((a) => a.name === area)!.toys.length === 1;
+  if (!single)
+    await page.getByRole("button", { name: toy, exact: false }).click();
   await expect(
     page.getByRole("heading", { level: 1, name: toy, exact: true }),
   ).toBeVisible();
@@ -32,27 +34,35 @@ async function settings(page: Page) {
     .getByRole("button", { name: String(nums[0] + nums[1]), exact: true })
     .click();
 }
-test("every initial activity mounts, responds, resets and returns to its shelf", async ({
+test("every Release 1 activity mounts, responds, resets and returns", async ({
   page,
 }) => {
-  test.setTimeout(120_000);
+  test.setTimeout(180_000);
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await page.goto("./");
   for (const area of areas) {
     for (const toy of area.toys) {
       await openToy(page, area.name, toy);
-      const controls = page.locator(".play-content button");
+      const controls = page.locator(".act button:not(:disabled)");
       await expect(controls.first()).toBeVisible();
       await controls.first().click();
-      if (toy === "Finger Paint") page.once("dialog", (d) => d.accept());
       await page
         .getByRole("button", { name: `Reset ${toy}`, exact: true })
         .click();
-      await page.getByRole("button", { name: `Back to ${area.name}` }).click();
-      await expect(
-        page.getByRole("heading", { name: area.name, exact: true }),
-      ).toBeVisible();
+      if (area.toys.length === 1) {
+        await page.getByRole("button", { name: "Back to playroom" }).click();
+        await expect(
+          page.getByRole("heading", { name: "Hello, little explorer." }),
+        ).toBeVisible();
+      } else {
+        await page
+          .getByRole("button", { name: `Back to ${area.name}` })
+          .click();
+        await expect(
+          page.getByRole("heading", { name: area.name, exact: true }),
+        ).toBeVisible();
+      }
     }
   }
   expect(errors).toEqual([]);
@@ -61,38 +71,47 @@ test("switch states survive re-entry and reset independently", async ({
   page,
 }) => {
   await page.goto("./");
-  await openToy(page, "Busy Board", "Switchboard");
-  await page.getByRole("switch", { name: "Round lamp" }).click();
-  await expect(page.getByRole("switch", { name: "Round lamp" })).toBeChecked();
-  await page.getByRole("button", { name: "Back to Busy Board" }).click();
-  await page.getByRole("button", { name: /Switchboard/ }).click();
-  await expect(page.getByRole("switch", { name: "Round lamp" })).toBeChecked();
+  await openToy(page, "Workshop Wall", "Light Switch Wall");
+  const rocker = page.getByRole("switch", { name: "Rocker switch" });
+  await expect(rocker).toBeChecked();
+  await rocker.click();
+  await expect(rocker).not.toBeChecked();
+  await page.getByRole("button", { name: "Back to Workshop Wall" }).click();
+  await page.getByRole("button", { name: /Light Switch Wall/ }).click();
+  await expect(rocker).not.toBeChecked();
   await page
-    .getByRole("button", { name: "Reset Switchboard", exact: true })
+    .getByRole("button", { name: "Reset Light Switch Wall", exact: true })
     .click();
-  await expect(
-    page.getByRole("switch", { name: "Round lamp" }),
-  ).not.toBeChecked();
+  await expect(rocker).toBeChecked();
 });
-test("colour mixing accepts two inputs and can be repeated", async ({
+test("all lights off turns the house to night", async ({ page }) => {
+  await page.goto("./");
+  await openToy(page, "Workshop Wall", "Light Switch Wall");
+  for (const name of [
+    "Rocker switch",
+    "Toggle switch",
+    "Pull cord",
+    "Push button",
+  ])
+    await page.getByRole("switch", { name }).click();
+  await page.getByRole("slider", { name: "Dimmer" }).fill("0");
+  await expect(page.locator(".act-lights")).toHaveClass(/is-night/);
+  await expect(page.getByRole("button", { name: "Sleepy cat" })).toBeVisible();
+});
+test("colour mixing names the colour and shares it with Finger Paint", async ({
   page,
 }) => {
   await page.goto("./");
-  await openToy(page, "Science Lab", "Colour Kitchen");
-  await page.getByRole("button", { name: "red", exact: true }).click();
-  await page
-    .getByRole("button", { name: "Add selected colour to bowl" })
-    .click();
-  await page.getByRole("button", { name: "yellow", exact: true }).click();
-  await page
-    .getByRole("button", { name: "Add selected colour to bowl" })
-    .click();
+  await openToy(page, "Little Lab", "Colour Mixing Pots");
+  await page.getByRole("button", { name: "Red paint jar" }).click();
+  await page.getByRole("button", { name: "Yellow paint jar" }).click();
+  await page.getByRole("button", { name: "Stir", exact: true }).click();
+  await expect(page.locator(".act .sr-status")).toHaveText("It made orange.");
+  await page.getByRole("button", { name: "Keep orange" }).click();
+  await page.getByRole("button", { name: "Empty the bowl" }).click();
+  await openToy(page, "Art Studio", "Finger Paint");
   await expect(
-    page.getByRole("button", { name: "Bowl: orange. Empty to mix again." }),
-  ).toBeVisible();
-  await page.getByRole("button", { name: "Empty bowl", exact: true }).click();
-  await expect(
-    page.getByRole("button", { name: "Add selected colour to bowl" }),
+    page.getByRole("button", { name: "My orange paint" }),
   ).toBeVisible();
 });
 test("parent gate cancels early hold and keyboard path saves settings", async ({
@@ -110,35 +129,43 @@ test("parent gate cancels early hold and keyboard path saves settings", async ({
   await expect(hold).toHaveText("Hold for 3 seconds");
   await page.getByRole("button", { name: "Close parent controls" }).click();
   await settings(page);
-  await page.getByRole("checkbox", { name: "Calm mode" }).check();
+  await page.getByRole("checkbox", { name: /Calm mode/ }).check();
   await page.getByRole("button", { name: "Close parent controls" }).click();
-  await expect(page.locator(".area-card")).toHaveCount(1);
-  await expect(page.getByRole("button", { name: /Calm Corner/ })).toBeVisible();
+  await expect(page.locator(".area-card")).toHaveCount(3);
+  await expect(page.getByRole("button", { name: /Cozy Nook/ })).toBeVisible();
   await page.reload();
-  await expect(page.locator(".area-card")).toHaveCount(1);
+  await expect(page.locator(".area-card")).toHaveCount(3);
 });
-test("paint has a keyboard stamp alternative, undo and confirmed clear", async ({
-  page,
-}) => {
+test("the child's name in settings drives Letter Friends", async ({ page }) => {
   await page.goto("./");
-  await openToy(page, "Creative Studio", "Finger Paint");
-  await page.getByRole("button", { name: "Stamp", exact: true }).click();
-  await page
-    .getByRole("button", { name: "Stamp in square 1", exact: true })
-    .click();
-  await expect(
-    page.getByRole("button", { name: "Undo", exact: true }),
-  ).toBeEnabled();
-  await page.getByRole("button", { name: "Clear", exact: true }).click();
-  await page.getByRole("button", { name: "Keep this one" }).click();
-  await expect(
-    page.getByRole("button", { name: "Undo", exact: true }),
-  ).toBeEnabled();
-  await page.getByRole("button", { name: "Clear", exact: true }).click();
-  await page.getByRole("button", { name: "Clear paper", exact: true }).click();
-  await expect(
-    page.getByRole("button", { name: "Undo", exact: true }),
-  ).toBeDisabled();
+  await settings(page);
+  const name = page.getByRole("textbox", { name: /Child’s name/ });
+  await name.fill("Mia");
+  await name.blur();
+  await page.getByRole("button", { name: "Close parent controls" }).click();
+  await openToy(page, "Thinking Treehouse", "Letter Friends");
+  await page.getByRole("button", { name: "Spell Mia" }).click();
+  for (const l of ["M", "I", "A"])
+    await page
+      .getByRole("button", { name: `Letter ${l}` })
+      .first()
+      .click();
+  await expect(page.getByLabel("Mia: 3 of 3 letters")).toBeVisible();
+});
+test("paint undo and a two-step broom", async ({ page }) => {
+  await page.goto("./");
+  await openToy(page, "Art Studio", "Finger Paint");
+  const paper = page.getByRole("img", { name: "Painting paper" });
+  const r = (await paper.boundingBox())!;
+  await page.mouse.move(r.x + 60, r.y + 60);
+  await page.mouse.down();
+  await page.mouse.move(r.x + 200, r.y + 120, { steps: 6 });
+  await page.mouse.up();
+  const undo = page.getByRole("button", { name: "Undo", exact: true });
+  await expect(undo).toBeEnabled();
+  await page.getByRole("button", { name: "New page" }).click();
+  await page.getByRole("button", { name: "Sweep it all away" }).click();
+  await expect(undo).toBeDisabled();
 });
 test("offline shell and toys work after completed precache", async ({
   page,
@@ -161,9 +188,11 @@ test("offline shell and toys work after completed precache", async ({
   await expect(
     page.getByRole("heading", { name: "Hello, little explorer." }),
   ).toBeVisible();
-  await openToy(page, "Busy Board", "Switchboard");
-  await page.getByRole("switch", { name: "Round lamp" }).click();
-  await expect(page.getByRole("switch", { name: "Round lamp" })).toBeChecked();
+  await openToy(page, "Workshop Wall", "Light Switch Wall");
+  await page.getByRole("switch", { name: "Rocker switch" }).click();
+  await expect(
+    page.getByRole("switch", { name: "Rocker switch" }),
+  ).not.toBeChecked();
   await context.setOffline(false);
 });
 test("phone layout shows every area on one map without horizontal overflow", async ({
@@ -172,112 +201,125 @@ test("phone layout shows every area on one map without horizontal overflow", asy
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("./");
   await expect(page.locator(".area-card")).toHaveCount(areas.length);
-  expect(
-    await page.evaluate(
+  const noOverflow = () =>
+    page.evaluate(
       () => document.documentElement.scrollWidth <= window.innerWidth,
-    ),
-  ).toBe(true);
-  await openToy(page, "Building Site", "Block Builder");
-  await page
-    .getByRole("button", { name: "Select block 1", exact: true })
-    .click();
-  await page
-    .getByRole("button", { name: "Place selected piece in row 2, column 2" })
-    .click();
-  await expect(
-    page.getByRole("button", { name: "Move block 1", exact: true }),
-  ).toBeVisible();
-  expect(
-    await page.evaluate(
-      () => document.documentElement.scrollWidth <= window.innerWidth,
-    ),
-  ).toBe(true);
+    );
+  expect(await noOverflow()).toBe(true);
+  for (const [area, toy] of [
+    ["Pretend Town", "Little Kitchen"],
+    ["Workshop Wall", "Gear Wall"],
+    ["Art Studio", "Stamp Pad"],
+  ]) {
+    await openToy(page, area, toy);
+    expect(await noOverflow()).toBe(true);
+  }
 });
-test("matching, planting, floating, and picnic mechanics change the visible scene", async ({
+test("predict-and-test activities respond to choices", async ({ page }) => {
+  await page.goto("./");
+  const status = page.locator(".act .sr-status");
+  // Sink or float: guess, then see.
+  await openToy(page, "Little Lab", "Sink or Float Tub");
+  await page.getByRole("button", { name: "Rock", exact: true }).click();
+  await page.getByRole("button", { name: "I think it sinks" }).click();
+  await expect(status).toContainText("You guessed it");
+  await page.getByRole("button", { name: "Cork", exact: true }).click();
+  await page.getByRole("button", { name: "I think it sinks" }).click();
+  await expect(status).toContainText("Oh, surprise!");
+  // Feed the friends: favourites and "not for me".
+  await openToy(page, "Animal Meadow", "Feed the Friends");
+  await page.getByRole("button", { name: "Carrot", exact: true }).click();
+  await page.getByRole("button", { name: "Feed the rabbit" }).click();
+  await expect(status).toContainText("loves the carrot");
+  await page.getByRole("button", { name: "Bone", exact: true }).click();
+  await page.getByRole("button", { name: "Feed the horse" }).click();
+  await expect(status).toContainText("Not for me");
+  // Barn doors: listen, then open.
+  await openToy(page, "Animal Meadow", "Barn Doors Peekaboo");
+  await page.getByRole("button", { name: "Listen at door 1" }).click();
+  await page.getByRole("button", { name: "Barn door 1", exact: true }).click();
+  await expect(status).toContainText("It's a");
+  // Door and latch: a latched door rattles; undo the latch to open it.
+  await openToy(page, "Workshop Wall", "Door and Latch Panel");
+  await page.getByRole("button", { name: "Door 1, latched" }).click();
+  await expect(status).toContainText("latched");
+  await page.getByRole("button", { name: /Slide the bolt/ }).click();
+  await page.getByRole("button", { name: "Door 1", exact: true }).click();
+  await expect(status).toContainText("Peekaboo");
+});
+test("counting, gears, kitchen, clinic and stars", async ({ page }) => {
+  test.setTimeout(60_000);
+  await page.goto("./");
+  const status = page.locator(".act .sr-status");
+  await openToy(page, "Thinking Treehouse", "Counting Critters");
+  const critters = page.locator(".count-critter");
+  const n = await critters.count();
+  for (let i = 0; i < n; i++) await critters.first().click();
+  await expect(status).toHaveText(new RegExp(`^${n} .*!$`));
+  await openToy(page, "Workshop Wall", "Gear Wall");
+  for (let i = 1; i <= 5; i++) {
+    await page.getByRole("button", { name: "Middle gear" }).click();
+    await page.getByRole("button", { name: `Peg ${i}, empty` }).click();
+  }
+  await expect(status).toHaveText("The gears reach the toy. Turn the crank!");
+  await openToy(page, "Pretend Town", "Little Kitchen");
+  await page.getByRole("button", { name: "Open the fridge" }).click();
+  await page.getByRole("button", { name: "Tomato", exact: true }).click();
+  await page.getByRole("button", { name: "Cutting board" }).click();
+  await page.getByRole("button", { name: "Chop", exact: true }).click();
+  await page.getByRole("button", { name: "chopped tomato" }).click();
+  await page.getByRole("button", { name: "Plate", exact: true }).click();
+  await page.getByRole("button", { name: "Serve the bear" }).click();
+  await expect(status).not.toBeEmpty();
+  await openToy(page, "Pretend Town", "Teddy Care Clinic");
+  await page.getByRole("button", { name: "Tissue", exact: true }).click();
+  await page.getByRole("button", { name: "Teddy, the patient" }).click();
+  await expect(status).toContainText("Teddy");
+  await openToy(page, "Cozy Nook", "Starry Night");
+  const sky = (await page
+    .getByRole("button", { name: "Put a star in the sky" })
+    .boundingBox())!;
+  for (const [x, y] of [
+    [0.3, 0.3],
+    [0.42, 0.18],
+    [0.45, 0.42],
+    [0.3, 0.31],
+  ])
+    await page.mouse.click(sky.x + sky.width * x, sky.y + sky.height * y);
+  await expect(status).toHaveText("The stars made a bird!");
+});
+test("tap-tap and drag both place shapes; a cancelled drag leaves no shape", async ({
   page,
 }) => {
   await page.goto("./");
-  await openToy(page, "Animal World", "Habitat Homes");
-  await page.getByRole("button", { name: "Select Frog", exact: true }).click();
-  await page.getByRole("button", { name: "Place animal in Pond" }).click();
-  await expect(page.locator(".residents").first().locator("svg")).toHaveCount(
-    1,
-  );
-  await openToy(page, "Science Lab", "Float or Sink");
-  await page.getByRole("button", { name: "Stone", exact: true }).click();
-  await page
-    .getByRole("button", { name: "Put selected object in water" })
-    .click();
-  await expect(page.locator(".sunk")).toHaveText("●Stone");
-  await openToy(page, "Pretend Play", "Garden Patch");
-  await page.getByRole("button", { name: "Pot 1: plant seed" }).click();
-  await page.getByRole("button", { name: "Pot 1: water seed" }).click();
+  await openToy(page, "Build Yard", "Shape Pictures");
+  await page.getByRole("button", { name: "Blank page" }).click();
+  await page.getByRole("button", { name: "circle shape" }).click();
+  await page.getByRole("button", { name: "Put it here" }).click();
   await expect(
-    page.getByRole("button", { name: "Pot 1: pick flower" }),
+    page.getByRole("button", { name: "circle 1: change colour" }),
   ).toBeVisible();
-  await openToy(page, "Pretend Play", "Picnic Kitchen");
-  await page.getByRole("button", { name: "Berry", exact: true }).click();
-  await page
-    .getByRole("button", { name: "Place selected food on plate" })
-    .click();
-  await expect(page.locator(".food-stack>span")).toHaveCount(1);
-  await page.getByRole("button", { name: "Serve the picnic" }).click();
-  await expect(page.getByRole("status")).toContainText("colourful");
-  await openToy(page, "Little Discoveries", "Shape Sorter");
-  await page.getByRole("button", { name: "Select Triangle" }).click();
-  await page.getByRole("button", { name: "Circle space", exact: true }).click();
-  await expect(
-    page.getByRole("button", { name: "Select Triangle" }),
-  ).toBeVisible();
-  await page.getByRole("button", { name: "Select Triangle" }).click();
-  await page
-    .getByRole("button", { name: "Triangle space", exact: true })
-    .click();
-  await expect(
-    page.getByRole("button", { name: "Triangle space, filled" }),
-  ).toBeVisible();
-  await openToy(page, "Little Discoveries", "Counting Picnic");
-  await page.getByRole("button", { name: "Select a berry" }).click();
-  await page
-    .getByRole("button", { name: "Plate 1, 0 berries. Add a berry." })
-    .click();
-  await expect(
-    page.getByRole("button", { name: "Plate 1, 1 berries. Add a berry." }),
-  ).toBeVisible();
-});
-test("drag placement commits and canceled drag leaves scene unchanged", async ({
-  page,
-}) => {
-  await page.goto("./");
-  await openToy(page, "Creative Studio", "Sticker Stories");
-  const piece = page.getByRole("button", {
-    name: "Select sticker 1",
-    exact: true,
-  });
-  const dest = page.getByRole("button", {
-    name: "Place selected piece in row 2, column 2",
-  });
+  const piece = page.getByRole("button", { name: "star shape" });
+  const canvas = page.getByRole("button", { name: "Picture" });
   const a = (await piece.boundingBox())!,
-    b = (await dest.boundingBox())!;
+    b = (await canvas.boundingBox())!;
   await page.mouse.move(a.x + a.width / 2, a.y + a.height / 2);
   await page.mouse.down();
-  await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2, { steps: 6 });
+  await page.mouse.move(b.x + b.width * 0.7, b.y + b.height * 0.4, {
+    steps: 8,
+  });
   await page.mouse.up();
   await expect(
-    page.getByRole("button", { name: "Move sticker 1", exact: true }),
+    page.getByRole("button", { name: "star 2: change colour" }),
   ).toBeVisible();
-  const placed = page.getByRole("button", {
-    name: "Move sticker 1",
-    exact: true,
-  });
-  const before = await placed.getAttribute("style");
-  const r = (await placed.boundingBox())!;
-  await page.mouse.move(r.x + r.width / 2, r.y + r.height / 2);
+  await page.mouse.move(a.x + a.width / 2, a.y + a.height / 2);
   await page.mouse.down();
-  await page.mouse.move(r.x + 120, r.y + 50);
-  await placed.dispatchEvent("pointercancel", { pointerId: 1 });
+  await page.mouse.move(b.x + b.width * 0.3, b.y + b.height * 0.4, {
+    steps: 8,
+  });
+  await piece.dispatchEvent("pointercancel", { pointerId: 1 });
   await page.mouse.up();
-  await expect(placed).toHaveAttribute("style", before!);
+  await expect(page.locator(".placed-hit")).toHaveCount(2);
 });
 test("offline indicator detects and repairs a missing cached asset", async ({
   page,
@@ -316,8 +358,8 @@ test("prepared update waits during play and activates only on parent request", a
     await navigator.serviceWorker.ready;
   });
   await page.reload();
-  await openToy(page, "Busy Board", "Switchboard");
-  await page.getByRole("switch", { name: "Round lamp" }).click();
+  await openToy(page, "Workshop Wall", "Light Switch Wall");
+  await page.getByRole("switch", { name: "Rocker switch" }).click();
   const original = await (await page.request.get("sw.js")).text();
   const updateFile = `${process.env.APP_OUT_DIR || "dist"}/sw-test-update.js`;
   await writeFile(
@@ -340,8 +382,8 @@ test("prepared update waits during play and activates only on parent request", a
       )
       .toBe(true);
     await expect(
-      page.getByRole("switch", { name: "Round lamp" }),
-    ).toBeChecked();
+      page.getByRole("switch", { name: "Rocker switch" }),
+    ).not.toBeChecked();
     await settings(page);
     await expect(
       page.getByRole("button", { name: "Update ready: restart" }),

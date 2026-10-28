@@ -198,15 +198,11 @@ export function startTouchFX(canvas: HTMLCanvasElement) {
         tint,
         !!button?.closest(".area-card, .activity-card"),
       );
-    if (
-      button &&
-      !button.closest(".piano, .paint-tools") &&
-      !button.classList.contains("placed")
-    )
-      squash(
-        button.closest(".tilt") ?? button,
-        button.closest(".drums") ? 1.6 : 1,
-      );
+    // Big play surfaces, instruments and movable pieces have their own feel.
+    const own =
+      ".sky-hit, .tub, .canvas-hit, .station-zone, .peg-spot, .crank-spot, .placed-hit, .float-bubble, .bar, .kit, .balloon, .door-swing, .door-leaf, .k-item, [data-item]";
+    if (button && !button.matches(own))
+      squash(button.closest(".tilt") ?? button);
   };
   const move = (e: PointerEvent) => {
     if (reducedMotion() || (e.pointerType === "touch" && !e.pressure)) return;

@@ -1,17 +1,28 @@
 import { describe, it, expect } from "vitest";
 import {
   areas,
+  calmIds,
+  toyArt,
   toyIds,
   validatePreferences,
-  mixColors,
-  traceTrack,
+  mixPaint,
+  nameColour,
+  cleanName,
 } from "../src/model";
-describe("initial release inventory", () => {
-  it("offers two distinct activities in each of ten areas", () => {
+import { activities } from "../src/activities";
+describe("Release 1 catalogue", () => {
+  it("has 21 distinct activities across ten areas, each with art and a component", () => {
     expect(areas).toHaveLength(10);
-    expect(toyIds).toHaveLength(20);
-    expect(new Set(toyIds).size).toBe(20);
-    for (const area of areas) expect(area.toys).toHaveLength(2);
+    expect(toyIds).toHaveLength(21);
+    expect(new Set(toyIds).size).toBe(21);
+    for (const id of toyIds) {
+      expect(toyArt[id]).toBeTruthy();
+      expect(activities[id]).toBeTruthy();
+    }
+    for (const area of areas) expect(area.toys.length).toBeGreaterThan(0);
+  });
+  it("keeps calm mode within the catalogue", () => {
+    for (const id of calmIds) expect(toyIds).toContain(id);
   });
 });
 describe("preferences", () => {
@@ -21,66 +32,55 @@ describe("preferences", () => {
       undefined,
       "oops",
       [],
-      { soundEnabled: "yes", enabledActivityIds: ["unknown"] },
+      { soundEnabled: "yes", enabledActivityIds: ["unknown"], voice: "loud" },
     ]) {
       const v = validatePreferences(p);
       expect(v.soundEnabled).toBe(true);
       expect(v.enabledActivityIds.length).toBeGreaterThan(0);
+      expect(v.voice).toBe("on");
+      expect(v.childName).toBe("Layla");
     }
   });
-  it("clamps levels and rejects nonfinite numbers", () => {
-    expect(
-      validatePreferences({ effectsVolume: 7, musicVolume: -3 }),
-    ).toMatchObject({ effectsVolume: 1, musicVolume: 0 });
-    expect(validatePreferences({ effectsVolume: NaN })).toHaveProperty(
-      "effectsVolume",
-      0.6,
-    );
+  it("clamps volumes and keeps valid choices", () => {
+    const v = validatePreferences({
+      effectsVolume: 4,
+      musicVolume: -1,
+      reducedMotion: true,
+      enabledActivityIds: ["Stamp Pad", "nope"],
+      voice: "names",
+      childName: "Mia!!",
+      familyNames: ["Dad", 4, "Grandma Jo", ""],
+    });
+    expect(v.effectsVolume).toBe(1);
+    expect(v.musicVolume).toBe(0);
+    expect(v.reducedMotion).toBe(true);
+    expect(v.enabledActivityIds).toEqual(["Stamp Pad"]);
+    expect(v.voice).toBe("names");
+    expect(v.childName).toBe("Mia");
+    expect(v.familyNames).toEqual(["Dad", "GrandmaJo"]);
   });
-  it("retains only recognized activity choices", () => {
-    expect(
-      validatePreferences({
-        enabledActivityIds: ["Switchboard", "unknown", "Switchboard"],
-        calmMode: true,
-      }),
-    ).toMatchObject({ enabledActivityIds: ["Switchboard"], calmMode: true });
-  });
-});
-describe("paint mixing", () => {
-  it.each([
-    ["red", "yellow", "orange"],
-    ["yellow", "blue", "green"],
-    ["blue", "red", "purple"],
-    ["red", "red", "red"],
-  ])("mixes %s and %s as %s", (a, b, result) => {
-    expect(mixColors(a, b)).toBe(result);
-    expect(mixColors(b, a)).toBe(result);
+  it("cleans names to letters only", () => {
+    expect(cleanName("Lay la1")).toBe("Layla");
+    expect(cleanName(7)).toBe("");
   });
 });
-describe("track connectivity", () => {
-  it("follows only connected endpoints", () => {
-    expect(
-      traceTrack([
-        { kind: "straight", rotation: 1 },
-        { kind: "straight", rotation: 1 },
-        { kind: "curve", rotation: 2 },
-        null,
-        null,
-        { kind: "straight", rotation: 0 },
-      ]),
-    ).toEqual([0, 1, 2, 5]);
+describe("paint mixing (RYB, spec §9.6)", () => {
+  const name = (...p: Parameters<typeof mixPaint>[0]) =>
+    nameColour(mixPaint(p)!).name;
+  it("mixes like preschool paint", () => {
+    expect(name("r", "y")).toBe("orange");
+    expect(name("y", "b")).toBe("green");
+    expect(name("r", "b")).toBe("purple");
+    expect(name("r")).toBe("red");
+    expect(name("y")).toBe("yellow");
+    expect(name("b")).toBe("blue");
   });
-  it("rests before an unconnected piece", () => {
-    expect(
-      traceTrack([
-        { kind: "straight", rotation: 1 },
-        { kind: "straight", rotation: 0 },
-        null,
-        null,
-        null,
-        null,
-      ]),
-    ).toEqual([0]);
-    expect(traceTrack(Array(6).fill(null))).toEqual([]);
+  it("tints and shades with white and black", () => {
+    expect(name("r", "w", "w")).toBe("pink");
+    expect(name("w")).toBe("white");
+    expect(name("k")).toBe("black");
+  });
+  it("returns nothing for an empty bowl", () => {
+    expect(mixPaint([])).toBeNull();
   });
 });
