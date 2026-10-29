@@ -1,5 +1,7 @@
 # Design refresh: "Sunny Workshop"
 
+> The activity catalogue described below was later replaced by the 21 Release 1 activities; see [Release 1 notes](RELEASE_1.md). The visual, motion and sound system still applies.
+
 This pass replaced the muted, website-like first build with a bright, tactile, toy-like playroom. Decisions trace back to [the v1.0 research and product specification](LAYLA_BOARD_SPEC_V1_RESEARCH.md) (section numbers below refer to it).
 
 ## What changed
