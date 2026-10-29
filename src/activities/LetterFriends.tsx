@@ -142,16 +142,23 @@ export default function LetterFriends({ prefs }: { prefs: Preferences }) {
 }
 function NameBuilder({ prefs, name }: { prefs: Preferences; name: string }) {
   const target = name.toUpperCase().split("");
-  const make = () =>
-    shuffle(
-      target.map((l, i) => ({
+  // A jumble that never stacks letters on top of each other: each letter
+  // gets its own cell of a grid, with a little wobble inside the cell.
+  const make = () => {
+    const cols = Math.min(innerWidth < 640 ? 3 : 5, target.length);
+    const rows = Math.ceil(target.length / cols) + 1;
+    const cells = shuffle(Array.from({ length: cols * rows }, (_, c) => c));
+    return target.map((l, i) => {
+      const c = cells[i];
+      return {
         l,
         i,
-        x: 8 + Math.random() * 78,
-        y: 8 + Math.random() * 50,
-        r: (Math.random() - 0.5) * 30,
-      })),
-    );
+        x: 4 + ((c % cols) + 0.15 + Math.random() * 0.25) * (80 / cols),
+        y: 4 + (Math.floor(c / cols) + Math.random() * 0.2) * (88 / rows),
+        r: (Math.random() - 0.5) * 24,
+      };
+    });
+  };
   const [pile, setPile] = useState(make);
   const [done, setDone] = useState<number[]>([]);
   const [shake, setShake] = useState<number | null>(null);
